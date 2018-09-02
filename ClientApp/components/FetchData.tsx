@@ -38,13 +38,11 @@ export class FetchData extends React.Component<RouteComponentProps<{}>, Customer
 			productsPaginated: { products: [] },
 			chosenProducts: { chosenProducts: [], orderPrice: 0}
 		};
-
 		fetch('/api/data/GetStartProductsFromJson')
 			.then(response => response.json() as Promise<ProductsPaginated>)
 			.then(data => {
 				this.setState({ productsPaginated: data });
 			});
-
 	}
 
 	render() {
@@ -100,7 +98,7 @@ export class FetchData extends React.Component<RouteComponentProps<{}>, Customer
 						<td></td>
 						<td>Order Price: {this.state.chosenProducts.orderPrice}</td>
 						<td>
-							<button onClick={() => { this.sendOrder()}}>Send Order</button>
+							<button onClick={() => { this.sendOrder() }}>Send Order</button>
 						</td>
 					</tr>
 				</tbody>
@@ -118,14 +116,34 @@ export class FetchData extends React.Component<RouteComponentProps<{}>, Customer
 	}
 
 	sendOrder() {
-		console.log(this.state.chosenProducts);
+		var xhr = new XMLHttpRequest();
+		xhr.open("POST", '/saveData');
+		xhr.send(this.state.chosenProducts);
+	}
+
+	componentDidMount() {
+		var xhttp = new XMLHttpRequest();
+		var self = this;
+		xhttp.open("get", "/saveData", true);
+		xhttp.send();
+		xhttp.onreadystatechange = function (e) {
+			console.log(this);
+			if (xhttp.readyState === 4 && xhttp.status === 200) {
+				console.log("ok, response :", this.response);
+				self.setState({
+					chosenProducts: JSON.parse(this.response)
+				});
+			}
+		}
 	}
 
 	addToCart(item: Product) {
 		var found = false;
+		var quantt = 0;
 		var updatedCart = this.state.chosenProducts.chosenProducts.map((cartItem) => {
 			if (cartItem.productId == item.productId) {
 				found = true;
+				quantt = cartItem.quantity;
 				cartItem.quantity = item.quantity;
 				return cartItem;
 			} else {
@@ -135,20 +153,11 @@ export class FetchData extends React.Component<RouteComponentProps<{}>, Customer
 
 		if (!found) {
 			updatedCart.push({ productId: item.productId, name: item.name, price: item.price, quantity: item.quantity });
-			this.state.chosenProducts.orderPrice += item.price * item.quantity;
 		}
 
+		this.state.chosenProducts.orderPrice += item.price * (quantt - item.quantity)*-1;
 		this.state.chosenProducts.chosenProducts = updatedCart;
 		this.setState(this.state);
-	}
-
-	loadCart() {
-		fetch('/api/data/GetProducts')
-			.then(response => response.json() as Promise<ChosenProducts>)
-			.then(data => {
-				this.setState({ chosenProducts: data });
-			});
-		console.log(this.state.chosenProducts.chosenProducts.length);
 	}
 
 	incrementCounter(prod: Product) {

@@ -11,7 +11,6 @@ namespace react.Controllers
     [Route("api/[controller]")]
     public class DataController : Controller
     {
-        ChosenProducts products = new ChosenProducts();
 
         [HttpGet("[action]")]
         public ProductsPaginated GetStartProductsFromJson()
@@ -29,18 +28,6 @@ namespace react.Controllers
                 });
             }
             return new ProductsPaginated { products = prod };
-        }
-
-        [HttpPost("[action]")]
-        public void SaveProducts(ChosenProducts products)
-        {
-            this.products = products;
-        }
-
-        [HttpGet("[action]")]
-        public ChosenProducts GetProducts()
-        {
-            return products;
         }
     }
 }
