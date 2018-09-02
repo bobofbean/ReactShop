@@ -9,7 +9,11 @@ interface  Product {
 	productId: number;
 	name: string;
 	price: number;
-	currentCount: number;
+	quantity: number;
+}
+
+interface ProductsChosen {
+	products: Product[];
 }
 
 interface ProductsPaginated {
@@ -18,6 +22,7 @@ interface ProductsPaginated {
 
 interface ChosenProducts {
 	chosenProducts: Product[];
+	orderPrice: number;
 }
 
 interface CustomerState {
@@ -25,25 +30,26 @@ interface CustomerState {
 	chosenProducts: ChosenProducts;
 }
 
-export class FetchData extends React.Component<any, CustomerState> {
+export class FetchData extends React.Component<RouteComponentProps<{}>, CustomerState> {
 
-	constructor(props: any) {
-		super(props);
+	constructor() {
+		super();
 		this.state = {
 			productsPaginated: { products: [] },
-			chosenProducts: { chosenProducts: [] }
+			chosenProducts: { chosenProducts: [], orderPrice: 0}
 		};
 
-		fetch('/api/data/GetProductsFromJson')
+		fetch('/api/data/GetStartProductsFromJson')
 			.then(response => response.json() as Promise<ProductsPaginated>)
 			.then(data => {
 				this.setState({ productsPaginated: data });
 			});
-		console.log(this.state.productsPaginated.products.length);
+
 	}
 
 	render() {
 		let cs = this.state.productsPaginated.products;
+		let cc = this.state.chosenProducts.chosenProducts;
 		return (
 			<table className='table'>
 				<thead>
@@ -60,33 +66,113 @@ export class FetchData extends React.Component<any, CustomerState> {
 							<td>{c.productId}</td>
 							<td>{c.name}</td>
 							<td>{c.price}</td>
-							<td> <p>Current count: <strong>{c.currentCount}</strong></p>
-								<button onClick={() => { this.decrementCounter(c.productId) }}>-</button>
-								<button onClick={() => { this.incrementCounter(c.productId) }}>+</button>
-								<button onClick={() => { this.addProductToCart(c) }}>Add</button>
+							<td> <p>Current count: <strong>{c.quantity}</strong></p>
+								<button onClick={() => { this.decrementCounter(c) }}>-</button>
+								<button onClick={() => { this.incrementCounter(c) }}>+</button>
+								<button onClick={() => { this.addToCart(c) }}>Add</button>
 							</td>
 						</tr>
 					)}
+				</tbody>
+				<thead>
+					<tr>
+						<th>Product ID</th>
+						<th>Name</th>
+						<th>Price</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					{cc.map((c) =>
+						<tr>
+							<td>{c.productId}</td>
+							<td>{c.name}</td>
+							<td>{c.price}</td>
+							<td> <p>Current count: <strong>{c.quantity}</strong></p>
+								<button onClick={() => { this.cdecrementCounter(c) }}>-</button>
+								<button onClick={() => { this.cincrementCounter(c) }}>+</button>
+								<button onClick={() => { this.deleteFromCart(c) }}>Remove</button>
+							</td>
+						</tr>
+					)}
+					<tr>
+						<td></td>
+						<td></td>
+						<td>Order Price: {this.state.chosenProducts.orderPrice}</td>
+						<td>
+							<button onClick={() => { this.sendOrder()}}>Send Order</button>
+						</td>
+					</tr>
 				</tbody>
 			</table>
 		);
 	}
 
-	addProductToCart(prod: Product) {
-		var num = this.state.chosenProducts.chosenProducts.length;
-		this.state.chosenProducts.chosenProducts[num] = prod;
+	deleteFromCart(prod: Product) {
+		var updatedCart = this.state.chosenProducts.chosenProducts;
+		var ind = updatedCart.indexOf(prod);
+		updatedCart.splice(ind, 1);
+		this.state.chosenProducts.orderPrice -= prod.price * prod.quantity;
+		this.state.chosenProducts.chosenProducts = updatedCart;
 		this.setState(this.state);
+	}
+
+	sendOrder() {
+		console.log(this.state.chosenProducts);
+	}
+
+	addToCart(item: Product) {
+		var found = false;
+		var updatedCart = this.state.chosenProducts.chosenProducts.map((cartItem) => {
+			if (cartItem.productId == item.productId) {
+				found = true;
+				cartItem.quantity = item.quantity;
+				return cartItem;
+			} else {
+				return cartItem;
+			}
+		});
+
+		if (!found) {
+			updatedCart.push({ productId: item.productId, name: item.name, price: item.price, quantity: item.quantity });
+			this.state.chosenProducts.orderPrice += item.price * item.quantity;
+		}
+
+		this.state.chosenProducts.chosenProducts = updatedCart;
+		this.setState(this.state);
+	}
+
+	loadCart() {
+		fetch('/api/data/GetProducts')
+			.then(response => response.json() as Promise<ChosenProducts>)
+			.then(data => {
+				this.setState({ chosenProducts: data });
+			});
 		console.log(this.state.chosenProducts.chosenProducts.length);
 	}
 
-	incrementCounter(prodNum: number) {
-		this.state.productsPaginated.products[prodNum].currentCount += 1;
+	incrementCounter(prod: Product) {
+		prod.quantity += 1;
 		this.setState(this.state);
 	}
 
-	decrementCounter(prodNum: number) {
-		if (this.state.productsPaginated.products[prodNum].currentCount > 0) {
-			this.state.productsPaginated.products[prodNum].currentCount -= 1;
+	decrementCounter(prod: Product) {
+		if (prod.quantity > 0) {
+			prod.quantity -= 1;
+			this.setState(this.state);
+		}
+	}
+
+	cincrementCounter(prod: Product) {
+		prod.quantity += 1;
+		this.state.chosenProducts.orderPrice += prod.price;
+		this.setState(this.state);
+	}
+
+	cdecrementCounter(prod: Product) {
+		if (prod.quantity > 0) {
+			prod.quantity -= 1;
+			this.state.chosenProducts.orderPrice -= prod.price;
 			this.setState(this.state);
 		}
 	}
